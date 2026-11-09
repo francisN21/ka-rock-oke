@@ -28,3 +28,6 @@ coverage/
 
 # Script output
 scripts/itunes_report.csv
+
+# Ka-Rock-oke: ship the built phone app so the HTPC doesn't need Node
+!frontend/dist/

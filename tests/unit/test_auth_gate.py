@@ -14,6 +14,12 @@ from tests.conftest import StubAdminAuth
 EXPECTED_PUBLIC_ENDPOINTS = {
     "admin.auth",
     "admin.logout",
+    "app_api.frontend",
+    "app_api.frontend_index",
+    "app_api.library",
+    "app_api.me",
+    "app_api.popular",
+    "app_api.search",
     "auth_api.auth_status",
     "auth_api.login",
     "bg_music.bg_music",

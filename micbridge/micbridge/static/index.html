@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MicBridge Mixer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --stage:#1E1626;--panel:#2A2033;--panel-2:#33283D;--line:#3E3247;--ink:#F2E9DD;--muted:#A897A8;
+  --amber:#FFB000;--amber-dim:#4A3A2A;--amber-ink:#FFB000;--red:#FF4D3D;--ok:#7FD69A;
+  --seg-off:#3A2F42;--focus:#FFD27A;
+  --r-lg:18px;--r-md:10px;--r-sm:6px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  --stage:#F1ECF2;--panel:#FFFFFF;--panel-2:#F7F3F8;--line:#DCD2DF;--ink:#251B2D;--muted:#6E6175;
+  --amber:#F0A300;--amber-dim:#F4E3BF;--amber-ink:#A86A00;--red:#D8341F;--ok:#2F8A4C;--seg-off:#E7DEEA;--focus:#A86A00;color-scheme:light}}
+:root[data-theme="light"]{
+  --stage:#F1ECF2;--panel:#FFFFFF;--panel-2:#F7F3F8;--line:#DCD2DF;--ink:#251B2D;--muted:#6E6175;
+  --amber:#F0A300;--amber-dim:#F4E3BF;--amber-ink:#A86A00;--red:#D8341F;--ok:#2F8A4C;--seg-off:#E7DEEA;--focus:#A86A00;color-scheme:light}
+*{box-sizing:border-box}
+html{background:var(--stage)}
+body{margin:0;background:var(--stage);color:var(--ink);font-family:Archivo,"Segoe UI",system-ui,sans-serif;font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+main{max-width:1180px;margin:0 auto;padding-block:22px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+.wide{font-stretch:125%;font-weight:750;letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+
+/* header */
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-size:26px;margin:0;flex:1;display:flex;align-items:baseline;gap:12px}
+.brand small{font-stretch:100%;font-weight:400;font-size:14px;color:var(--muted)}
+.lamp{display:inline-flex;align-items:center;gap:8px;font-size:14px;color:var(--muted)}
+.lamp i{width:10px;height:10px;border-radius:50%;background:var(--seg-off)}
+.lamp.on i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.lamp.on{color:var(--ink)}.lamp.bad i{background:var(--red);box-shadow:0 0 10px var(--red)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:var(--r-md);padding:9px 15px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.go{background:var(--amber);border-color:var(--amber);color:#24160A;font-weight:650}
+.btn.small{padding:6px 11px;font-size:13px}
+.btn.quiet{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.quiet:hover{color:var(--ink)}
+.errors{margin-top:12px}
+.errors p{margin:6px 0;color:var(--red);font-size:14px}
+
+/* delay strip */
+.delay{margin-top:22px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px}
+.delay-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.delay-head h2{font-size:18px;margin:0}
+.delay-head p{margin:0;color:var(--muted);font-size:14px;max-width:62ch}
+.track{position:relative;margin:22px 0 8px;height:34px}
+.zone{position:absolute;top:0;bottom:0;border-radius:var(--r-sm)}
+.zone.z1{left:0;width:33.3%;background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.zone.z2{left:33.3%;width:25%;background:color-mix(in srgb,var(--amber) 12%,transparent)}
+.zone.z3{left:58.3%;right:0;background:color-mix(in srgb,var(--red) 11%,transparent)}
+.bar{position:absolute;top:7px;height:20px;display:flex;border-radius:4px;overflow:hidden;left:0;transition:width .35s ease}
+.bar span{height:100%;transition:width .35s ease}
+.bar .s-in{background:var(--amber)}.bar .s-buf{background:color-mix(in srgb,var(--amber) 70%,var(--ink))}
+.bar .s-out{background:color-mix(in srgb,var(--amber) 45%,var(--stage))}
+.bar .s-air{background:repeating-linear-gradient(135deg,var(--red) 0 6px,color-mix(in srgb,var(--red) 55%,var(--stage)) 6px 12px)}
+.ruler{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--muted)}
+.legend b{color:var(--ink);font-weight:600}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.delay-foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.total{font-size:22px}
+.total.good{color:var(--ok)}.total.meh{color:var(--amber-ink)}.total.bad{color:var(--red)}
+.foot-note{color:var(--muted);font-size:14px;flex:1;min-width:220px}
+
+/* layout */
+.cols > *{min-width:0}
+.cols{display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px;margin-top:18px;align-items:start}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px}
+.panel h2{font-size:18px;margin:0 0 12px}
+.field{margin-top:16px}
+.field > label,.field > .lbl{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+select{width:100%;min-width:0;text-overflow:ellipsis;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px}
+.hslider{display:flex;align-items:center;gap:10px}
+.hslider input{flex:1;accent-color:var(--amber);min-width:0}
+.hslider output{min-width:62px;text-align:right;font-size:13px;color:var(--muted)}
+.switch{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:12px 0;border-top:1px solid var(--line)}
+.switch:first-of-type{border-top:0}
+.switch div{font-size:14px}.switch small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.tog{position:relative;width:42px;height:24px;flex:none;margin-top:2px}
+.tog input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.tog span{position:absolute;inset:0;border-radius:99px;background:var(--seg-off);transition:background .15s;pointer-events:none}
+.tog span:before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.tog input:checked+span{background:var(--amber)}
+.tog input:checked+span:before{transform:translateX(18px);background:#24160A}
+.tog input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
+.hmeter{display:flex;gap:3px;height:12px;flex:1}
+.hmeter i{flex:1;border-radius:2px;background:var(--seg-off)}
+.hmeter i.on{background:var(--amber)}.hmeter i.on.clip{background:var(--red)}
+.inline{display:flex;gap:10px;align-items:center}
+details.more{margin-top:8px;border-top:1px solid var(--line)}
+details.more summary{cursor:pointer;padding:12px 0 4px;color:var(--muted);font-size:14px;list-style:none}
+details.more summary::-webkit-details-marker{display:none}
+details.more summary:before{content:"+ "}details.more[open] summary:before{content:"− "}
+
+/* channel strips */
+.strips-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.strips-head h2{font-size:18px;margin:0}
+.strips{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity}
+.strip{flex:0 0 300px;min-width:0;scroll-snap-align:start;background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px;display:flex;flex-direction:column}
+.strip.live{border-color:color-mix(in srgb,var(--amber) 40%,var(--line))}
+.strip.muted{opacity:.85}
+.strip-name{display:flex;align-items:center;gap:8px}
+.strip-name input{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:var(--r-sm);padding:4px 6px;margin-left:-6px;font-size:17px;font-stretch:125%;font-weight:750}
+.strip-name input:hover{border-color:var(--line)}.strip-name input:focus{border-color:var(--amber);outline:0}
+.strip-state{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.strip-state i{width:8px;height:8px;border-radius:50%;background:var(--seg-off)}
+.strip.live .strip-state i{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.strip .src{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:8px;margin-top:10px}
+.strip .src select{font-size:13px;padding:7px 8px}
+.desk{display:grid;grid-template-columns:38px 1fr;gap:14px;margin-top:16px}
+.ladder{display:flex;flex-direction:column-reverse;gap:3px;height:230px;padding:5px;border-radius:var(--r-sm);background:var(--stage);border:1px solid var(--line)}
+.ladder i{flex:1;border-radius:2px;background:var(--seg-off)}
+.ladder i.on{background:var(--amber);box-shadow:0 0 6px color-mix(in srgb,var(--amber) 60%,transparent)}
+.ladder i.on.clip{background:var(--red);box-shadow:0 0 6px var(--red)}
+.ladder i.peak{background:color-mix(in srgb,var(--amber) 55%,var(--seg-off))}
+.controls{display:flex;flex-direction:column;gap:12px;min-width:0}
+.fader{display:flex;gap:10px;align-items:stretch;height:150px}
+.fader input{writing-mode:vertical-lr;direction:rtl;width:30px;height:100%;accent-color:var(--amber);margin:0}
+.fader-read{display:flex;flex-direction:column;justify-content:space-between;font-size:12px;color:var(--muted)}
+.fader-read b{font-size:20px;color:var(--ink);font-weight:650;font-stretch:110%}
+.pads{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pad{border:1px solid var(--line);background:var(--panel-2);border-radius:var(--r-sm);padding:8px 6px;cursor:pointer;font-size:13px;text-align:center}
+.pad[aria-pressed="true"].mute{background:var(--red);border-color:var(--red);color:#fff;font-weight:650}
+.pad[aria-pressed="true"].auto{background:var(--amber-dim);border-color:var(--amber);color:var(--amber-ink);font-weight:600}
+.strip .test{margin-top:12px;justify-content:center}
+.test.rec{border-color:var(--red);color:var(--red)}
+.test-note{font-size:13px;color:var(--muted);min-height:20px;margin-top:6px}
+.fxsel{margin-top:12px}
+.fxrow{display:grid;grid-template-columns:62px 1fr 42px;gap:8px;align-items:center;font-size:13px;margin-top:10px}
+.fxrow span:first-child{color:var(--muted)}
+.fxrow input{accent-color:var(--amber);min-width:0}
+.fxrow output{text-align:right;color:var(--muted)}
+.eq{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:10px;text-align:center;font-size:11px;color:var(--muted)}
+.eq input{writing-mode:vertical-lr;direction:rtl;height:96px;width:22px;accent-color:var(--amber);margin:4px auto}
+.eq b{display:block;font-weight:500;color:var(--ink);font-size:11px}
+.strip .err{color:var(--red);font-size:13px;margin-top:8px}
+.strip .rm{margin-top:10px;align-self:flex-start}
+.add{flex:0 0 200px;border:1.5px dashed var(--line);border-radius:var(--r-lg);background:transparent;color:var(--muted);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:420px;font-size:14px;padding:16px;text-align:center}
+.add:hover{color:var(--ink);border-color:var(--muted)}
+.add b{font-size:30px;font-weight:400;line-height:1}
+.empty{color:var(--muted);font-size:14px;padding:6px 2px 0}
+.demo{margin-top:14px;font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:var(--r-md);padding:8px 12px;display:none}
+.cpu{font-size:12px;color:var(--muted);margin-top:14px}
+@media (max-width:520px){.strip{flex:0 0 calc(100vw - 48px)}.add{flex-basis:60vw;min-height:200px}.delay{padding:16px}.track{margin-top:16px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1 class="brand"><span class="wide">MicBridge</span><small>Karaoke mic mixer</small></h1>
+    <span class="lamp" id="lamp"><i></i><span id="lampText">Connecting…</span></span>
+    <button class="btn quiet" id="rescanBtn" title="Look for newly plugged-in receivers and mics">Rescan devices</button>
+    <button class="btn go" id="startBtn">Start mics</button>
+  </header>
+  <div class="demo" id="demo">Preview with sample devices. Run MicBridge on your PC to see your real hardware.</div>
+  <div class="errors" id="errors"></div>
+
+  <section class="delay" aria-labelledby="delayTitle">
+    <div class="delay-head">
+      <h2 id="delayTitle" class="wide">Delay from mic to speakers</h2>
+      <p>Under 20 ms feels instant. Measure to include your sound card, optical link and receiver.</p>
+    </div>
+    <div class="track" aria-hidden="true">
+      <div class="zone z1"></div><div class="zone z2"></div><div class="zone z3"></div>
+      <div class="bar" id="bar"><span class="s-in"></span><span class="s-buf"></span><span class="s-out"></span><span class="s-air"></span></div>
+    </div>
+    <div class="ruler" aria-hidden="true"><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60 ms</span></div>
+    <div class="legend" id="legend"></div>
+    <div class="delay-foot">
+      <span class="total wide" id="total">—</span>
+      <span class="foot-note" id="measureNote">Hold a mic about 30 cm from a front speaker, then measure.</span>
+      <button class="btn" id="measure">Measure delay</button>
+    </div>
+  </section>
+
+  <div class="cols">
+    <aside class="panel" aria-labelledby="spkTitle">
+      <h2 id="spkTitle" class="wide">Speakers</h2>
+      <div class="field"><label for="outDev">Output device</label><select id="outDev"></select></div>
+      <div class="field"><div class="lbl">Level</div>
+        <div class="inline"><button class="btn small" id="testSpk">Play test tone</button><div class="hmeter" id="outMeter"></div></div>
+      </div>
+      <div class="field"><label for="outVol">Mic volume in the room</label>
+        <div class="hslider"><input type="range" id="outVol" min="-30" max="12" step="0.5"><output id="outVolV"></output></div>
+      </div>
+      <div class="field"><label for="routing">Vocals play from</label>
+        <select id="routing"><option value="front">Front left and right</option><option value="center">Center speaker</option><option value="front+center">Front and center</option><option value="all">Every speaker</option></select>
+      </div>
+      <details class="more">
+        <summary>Latency and driver settings</summary>
+        <div class="field"><label for="blocksize">Buffer size (smaller is faster; raise it if you hear crackles)</label>
+          <select id="blocksize"><option value="64">64 samples</option><option value="128">128 samples</option><option value="256">256 samples</option><option value="512">512 samples</option></select></div>
+        <div class="field"><label for="samplerate">Sample rate</label>
+          <select id="samplerate"><option value="44100">44.1 kHz</option><option value="48000">48 kHz</option></select></div>
+        <div class="field">
+          <div class="switch"><div>Exclusive mic access<small>Lowest input delay. Windows can't use the mic while MicBridge runs.</small></div><label class="tog"><input type="checkbox" id="inExcl" aria-label="Exclusive mic access"><span></span></label></div>
+          <div class="switch"><div>Exclusive speaker access<small>Also blocks the karaoke music, so leave this off.</small></div><label class="tog"><input type="checkbox" id="outExcl" aria-label="Exclusive speaker access"><span></span></label></div>
+          <div class="switch"><div>List every driver type<small>Adds MME and DirectSound copies of each device. They're slower.</small></div><label class="tog"><input type="checkbox" id="allApis" aria-label="List every driver type"><span></span></label></div>
+        </div>
+      </details>
+      <div class="cpu" id="cpu"></div>
+    </aside>
+
+    <section aria-labelledby="micTitle">
+      <div class="strips-head"><h2 id="micTitle" class="wide">Microphones</h2></div>
+      <div class="strips" id="strips"></div>
+    </section>
+  </div>
+</main>
+
+<template id="stripTpl">
+  <article class="strip">
+    <div class="strip-name"><input class="mname" aria-label="Microphone name" maxlength="24"><span class="strip-state"><i></i><span class="st"></span></span></div>
+    <div class="src">
+      <select class="mdev" aria-label="Input device"></select>
+      <select class="mch" aria-label="Input channel"></select>
+    </div>
+    <div class="desk">
+      <div class="ladder" aria-hidden="true"></div>
+      <div class="controls">
+        <div class="fader">
+          <input type="range" class="mgain" min="-20" max="30" step="0.5" aria-label="Input volume">
+          <div class="fader-read"><span>Input volume</span><b class="mgainv"></b><span class="magc"></span></div>
+        </div>
+        <div class="pads">
+          <button class="pad mute" aria-pressed="false">Mute</button>
+          <button class="pad auto" aria-pressed="false" title="Automatically adjust microphone volume">Auto level</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn test">Test microphone</button>
+    <div class="test-note" aria-live="polite"></div>
+    <div class="fxsel"><select class="mpreset" aria-label="Effect preset"></select></div>
+    <div class="fxrow"><span>Echo</span><input type="range" class="fx" data-k="echo_mix" min="0" max="0.6" step="0.01" aria-label="Echo"><output></output></div>
+    <div class="fxrow"><span>Reverb</span><input type="range" class="fx" data-k="reverb_mix" min="0" max="0.6" step="0.01" aria-label="Reverb"><output></output></div>
+    <details class="more">
+      <summary>Equalizer and advanced</summary>
+      <div class="eq"></div>
+      <div class="fxrow"><span>Echo time</span><input type="range" class="fx" data-k="echo_ms" min="60" max="500" step="5" aria-label="Echo time"><output></output></div>
+      <div class="fxrow"><span>Repeats</span><input type="range" class="fx" data-k="echo_fb" min="0" max="0.8" step="0.01" aria-label="Echo repeats"><output></output></div>
+      <div class="fxrow"><span>Room</span><input type="range" class="fx" data-k="reverb_room" min="0" max="1" step="0.01" aria-label="Room size"><output></output></div>
+      <div class="fxrow"><span>Low cut</span><input type="range" class="fx" data-k="lowcut" min="20" max="250" step="5" aria-label="Low cut"><output></output></div>
+      <div class="fxrow"><span>Squash</span><input type="range" class="fx" data-k="comp_thr" min="-40" max="0" step="1" aria-label="Compressor threshold"><output></output></div>
+      <div class="fxrow"><span>Pan</span><input type="range" class="mpan" min="-1" max="1" step="0.05" aria-label="Pan"><output class="mpanv"></output></div>
+      <div class="switch"><div>Noise gate<small>Silences hiss between lines.</small></div><label class="tog"><input type="checkbox" class="mgate" aria-label="Noise gate"><span></span></label></div>
+      <div class="fxrow"><span>Gate at</span><input type="range" class="mgatedb" min="-80" max="-20" step="1" aria-label="Gate threshold"><output class="mgatedbv"></output></div>
+    </details>
+    <div class="err"></div>
+    <button class="btn quiet small rm">Remove this mic</button>
+  </article>
+</template>
+
+<script>
+const $ = s => document.querySelector(s);
+let S = null, DEV = [], els = {}, DEMO = false;
+const LADDER = 18, HSEG = 14;
+
+/* ---------- API (falls back to a demo when MicBridge isn't running) ---------- */
+async function api(path, method = "GET", body) {
+  if (DEMO) return demoApi(path, method, body);
+  try {
+    const r = await fetch(path, {method, headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
+    if (!r.ok) throw 0;
+    return await r.json();
+  } catch (e) {
+    if (!S) { DEMO = true; $("#demo").style.display = "block"; return demoApi(path, method, body); }
+    throw e;
+  }
+}
+
+/* ---------- helpers ---------- */
+const dB = v => (v > 0 ? "+" : "") + (+v).toFixed(1) + " dB";
+const pct = v => Math.round(v * 100) + "%";
+const fmt = (k, v) => k === "echo_ms" ? `${+v} ms` : k === "lowcut" ? `${+v} Hz` : k === "comp_thr" ? `${+v} dB` : pct(v);
+const debounce = (fn, ms = 60) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const segs = (el, n) => { el.innerHTML = "<i></i>".repeat(n); };
+function light(el, db, n, peak) {
+  const on = Math.max(0, Math.min(n, Math.round((db + 60) / 60 * n)));
+  const pk = peak == null ? -1 : Math.min(n - 1, Math.round((peak + 60) / 60 * n) - 1);
+  [...el.children].forEach((c, i) => c.className = i < on ? (i >= n - 2 ? "on clip" : "on") : i === pk ? "peak" : "");
+}
+const devsFor = kind => DEV.filter(d => (kind === "in" ? d.inputs : d.outputs) > 0 && (S.settings.show_all_apis || /WASAPI|ASIO/.test(d.hostapi)));
+function fillDevs(sel, kind, current) {
+  if (document.activeElement === sel) return;
+  const list = devsFor(kind);
+  sel.innerHTML = list.map(d => {
+    const drv = d.hostapi.includes("ASIO") ? "ASIO" : d.hostapi.replace("Windows ", "");
+    return `<option value="${d.key.replace(/"/g, "&quot;")}">${d.name} · ${drv}${(kind === "in" ? d.is_default_in : d.is_default_out) ? " (Windows default)" : ""}</option>`;
+  }).join("");
+  if (current && !list.some(d => d.key === current))
+    sel.insertAdjacentHTML("afterbegin", `<option value="${current.replace(/"/g, "&quot;")}">${current.split(" || ")[0]} (unplugged)</option>`);
+  if (current) sel.value = current;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const lamp = $("#lamp");
+  lamp.className = "lamp" + (S.running ? (S.errors.length ? " bad" : " on") : "");
+  $("#lampText").textContent = S.running ? (S.errors.length ? "Running with problems" : S.mode === "asio-duplex" ? "Live · ASIO" : "Live") : "Mics off";
+  $("#startBtn").textContent = S.running ? "Stop mics" : "Start mics";
+  $("#startBtn").classList.toggle("go", !S.running);
+  $("#errors").innerHTML = S.errors.map(e => `<p>${e}</p>`).join("");
+  const o = S.settings.output;
+  fillDevs($("#outDev"), "out", o.device || S.output_device);
+  $("#outVol").value = o.volume_db; $("#outVolV").textContent = dB(o.volume_db);
+  $("#routing").value = o.routing; $("#outExcl").checked = o.exclusive;
+  $("#blocksize").value = S.settings.blocksize; $("#samplerate").value = S.settings.samplerate;
+  $("#inExcl").checked = S.settings.input_exclusive; $("#allApis").checked = S.settings.show_all_apis;
+  renderDelay();
+  const wrap = $("#strips"), seen = new Set();
+  S.mics.forEach((m, i) => { seen.add(m.id); if (!els[m.id]) els[m.id] = buildStrip(m.id); fillStrip(els[m.id], m, i); });
+  Object.keys(els).forEach(id => { if (!seen.has(id)) { els[id].remove(); delete els[id]; } });
+  wrap.innerHTML = "";
+  S.mics.forEach(m => wrap.appendChild(els[m.id]));
+  const add = document.createElement("button");
+  add.className = "add"; add.innerHTML = `<b>+</b>Add a microphone<span>${S.mics.length ? "Each mic gets its own strip" : "Plug in a receiver or mic, then add it here"}</span>`;
+  add.onclick = addMic; wrap.appendChild(add);
+}
+
+function renderDelay() {
+  const L = S.latency, T = S.last_latency_test && S.last_latency_test.ok ? S.last_latency_test : null;
+  const parts = L ? {in: L.input_ms, buf: L.buffer_ms, out: L.output_ms, air: T ? Math.max(0, T.round_trip_ms - L.total_ms) : 0} : {in: 0, buf: 0, out: 0, air: 0};
+  const total = parts.in + parts.buf + parts.out + parts.air;
+  const w = ms => Math.min(100, ms / 60 * 100);
+  const bar = $("#bar");
+  bar.style.width = w(total) + "%";
+  const sp = bar.children;
+  [parts.in, parts.buf, parts.out, parts.air].forEach((v, i) => sp[i].style.width = total ? (v / total * 100) + "%" : "0");
+  $("#legend").innerHTML = [
+    ["var(--amber)", "Mic in", parts.in], ["color-mix(in srgb,var(--amber) 70%,var(--ink))", "Buffer", parts.buf],
+    ["color-mix(in srgb,var(--amber) 45%,var(--stage))", "Speaker out", parts.out],
+    ["var(--red)", "Card, receiver and air", T ? parts.air : null]
+  ].map(([c, n, v]) => `<span><i style="background:${c}"></i>${n} <b>${v == null ? "not measured" : v.toFixed(1) + " ms"}</b></span>`).join("");
+  const t = $("#total");
+  t.textContent = L ? `${total.toFixed(1)} ms${T ? "" : " in software"}` : "—";
+  t.className = "total wide " + (!L ? "" : total < 20 ? "good" : total < 35 ? "meh" : "bad");
+}
+
+function buildStrip(id) {
+  const el = $("#stripTpl").content.firstElementChild.cloneNode(true);
+  const q = s => el.querySelector(s);
+  segs(q(".ladder"), LADDER);
+  const post = p => api(`/api/mics/${id}`, "POST", p);
+  const full = p => post(p).then(s => { S = s; render(); });
+  const live = p => post(p).then(s => { S = s; });
+  const liveD = debounce(live, 50);
+  q(".mname").onchange = e => live({name: e.target.value.trim()});
+  q(".mdev").onchange = e => full({device: e.target.value, channel: 0});
+  q(".mch").onchange = e => full({channel: +e.target.value});
+  q(".mgain").oninput = e => { q(".mgainv").textContent = dB(e.target.value); liveD({gain_db: +e.target.value}); };
+  const toggle = (sel, key) => q(sel).onclick = e => { const v = e.currentTarget.getAttribute("aria-pressed") !== "true"; e.currentTarget.setAttribute("aria-pressed", v); el.classList.toggle("muted", key === "muted" ? v : el.classList.contains("muted")); live({[key]: v}); };
+  toggle(".mute", "muted"); toggle(".auto", "auto_gain");
+  q(".mgate").onchange = e => live({gate: e.target.checked});
+  q(".mgatedb").oninput = e => { q(".mgatedbv").textContent = e.target.value + " dB"; liveD({gate_db: +e.target.value}); };
+  q(".mpan").oninput = e => { const v = +e.target.value; q(".mpanv").textContent = v === 0 ? "C" : (v < 0 ? "L" : "R") + Math.round(Math.abs(v) * 100); liveD({pan: v}); };
+  q(".mpreset").onchange = e => full({preset: e.target.value});
+  el.querySelectorAll(".fx").forEach(r => { const d = debounce(v => live({fx: {[r.dataset.k]: v}}), 50); r.oninput = () => { r.nextElementSibling.textContent = fmt(r.dataset.k, r.value); d(+r.value); }; });
+  const eq = q(".eq");
+  eq.innerHTML = S.eq_bands.map(([k, f]) => `<label><b data-k="${k}">0</b><input type="range" min="-12" max="12" step="0.5" data-k="${k}" aria-label="${f} Hz">${f >= 1000 ? f / 1000 + "k" : f}</label>`).join("");
+  eq.querySelectorAll("input").forEach(r => { const d = debounce(v => live({fx: {eq: {[r.dataset.k]: v}}}), 50); r.oninput = () => { eq.querySelector(`b[data-k=${r.dataset.k}]`).textContent = (+r.value > 0 ? "+" : "") + r.value; d(+r.value); }; });
+  q(".rm").onclick = e => {
+    const b = e.currentTarget;
+    if (b.dataset.armed) { api(`/api/mics/${id}`, "DELETE").then(s => { S = s; render(); }); return; }
+    b.dataset.armed = "1"; b.textContent = "Click again to remove"; b.style.color = "var(--red)";
+    setTimeout(() => { delete b.dataset.armed; b.textContent = "Remove this mic"; b.style.color = ""; }, 3000);
+  };
+  q(".test").onclick = async e => {
+    const b = e.currentTarget, note = q(".test-note");
+    b.disabled = true; b.classList.add("rec"); b.textContent = "Recording… sing now";
+    note.textContent = "4 seconds, then it plays back with your effects.";
+    const r = await api("/api/test/record", "POST", {seconds: 4});
+    b.disabled = false; b.classList.remove("rec"); b.textContent = "Test microphone";
+    note.textContent = !r.ok ? r.error : r.peak_db > -3 ? `Too loud (peak ${r.peak_db} dB). Lower the input volume.` : r.peak_db < -30 ? `Very quiet (peak ${r.peak_db} dB). Raise the input volume.` : `Good level (peak ${r.peak_db} dB).`;
+  };
+  return el;
+}
+
+function fillStrip(el, m, i) {
+  const q = s => el.querySelector(s);
+  if (document.activeElement !== q(".mname")) { q(".mname").value = m.name || `Mic ${i + 1}`; }
+  el.classList.toggle("live", m.running); el.classList.toggle("muted", m.muted);
+  q(".st").textContent = m.running ? (m.exclusive ? "Live, exclusive" : "Live") : "Off";
+  fillDevs(q(".mdev"), "in", m.device || m.resolved_device);
+  const dev = DEV.find(d => d.key === (m.device || m.resolved_device)), n = dev ? dev.inputs : 1;
+  q(".mch").innerHTML = (n > 1 ? `<option value="-1">Both / all</option>` : "") + Array.from({length: n}, (_, c) => `<option value="${c}">${n === 2 ? (c ? "Right" : "Left") : "Ch " + (c + 1)}</option>`).join("");
+  q(".mch").value = n === 1 ? 0 : m.channel;
+  q(".mgain").value = m.gain_db; q(".mgainv").textContent = dB(m.gain_db);
+  q(".mute").setAttribute("aria-pressed", m.muted); q(".auto").setAttribute("aria-pressed", m.auto_gain);
+  q(".mgate").checked = m.gate; q(".mgatedb").value = m.gate_db; q(".mgatedbv").textContent = m.gate_db + " dB";
+  q(".mpan").value = m.pan; q(".mpanv").textContent = +m.pan === 0 ? "C" : (m.pan < 0 ? "L" : "R") + Math.round(Math.abs(m.pan) * 100);
+  q(".mpreset").innerHTML = S.presets.map(p => `<option value="${p}">${p}</option>`).join("") + (m.fx ? `<option value="__c" disabled>${m.preset}, adjusted</option>` : "");
+  q(".mpreset").value = m.fx ? "__c" : m.preset;
+  const f = m.fx_resolved;
+  el.querySelectorAll(".fx").forEach(r => { r.value = f[r.dataset.k]; r.nextElementSibling.textContent = fmt(r.dataset.k, r.value); });
+  el.querySelectorAll(".eq input").forEach(r => { r.value = f.eq[r.dataset.k] || 0; el.querySelector(`.eq b[data-k=${r.dataset.k}]`).textContent = (r.value > 0 ? "+" : "") + r.value; });
+  q(".err").textContent = m.error ? m.error : "";
+}
+
+async function addMic() {
+  const free = devsFor("in").find(d => !S.mics.some(m => m.device === d.key));
+  S = await api("/api/mics", "POST", {device: free ? free.key : null}); render();
+}
+async function refresh(rescan) { DEV = await api("/api/devices" + (rescan ? "?rescan=1" : "")); S = await api("/api/state"); render(); }
+const setS = p => api("/api/settings", "POST", p).then(s => { S = s; render(); });
+
+$("#startBtn").onclick = async () => { S = await api(S.running ? "/api/stop" : "/api/start", "POST"); render(); };
+$("#rescanBtn").onclick = async () => { const was = S.running; if (was) await api("/api/stop", "POST"); await refresh(true); if (was) { S = await api("/api/start", "POST"); render(); } };
+$("#outDev").onchange = e => setS({output: {device: e.target.value}});
+const vol = debounce(v => api("/api/settings", "POST", {output: {volume_db: v}}), 50);
+$("#outVol").oninput = e => { $("#outVolV").textContent = dB(e.target.value); vol(+e.target.value); };
+$("#routing").onchange = e => setS({output: {routing: e.target.value}});
+$("#outExcl").onchange = e => setS({output: {exclusive: e.target.checked}});
+$("#blocksize").onchange = e => setS({blocksize: +e.target.value});
+$("#samplerate").onchange = e => setS({samplerate: +e.target.value});
+$("#inExcl").onchange = e => setS({input_exclusive: e.target.checked});
+$("#allApis").onchange = e => setS({show_all_apis: e.target.checked});
+$("#testSpk").onclick = () => api("/api/test/speaker", "POST");
+$("#measure").onclick = async e => {
+  const b = e.currentTarget; b.disabled = true; $("#measureNote").textContent = "Listening for three clicks…";
+  const r = await api("/api/test/latency", "POST"); b.disabled = false;
+  $("#measureNote").textContent = r.ok ? `Measured ${r.round_trip_ms} ms end to end. MicBridge adds ${r.software_ms.total_ms} ms; the rest is the card, receiver and air.` : r.error;
+  S = await api("/api/state"); render();
+};
+
+segs($("#outMeter"), HSEG);
+const peaks = {};
+setInterval(async () => {
+  if (!S || !S.running) return;
+  let m; try { m = await api("/api/meters"); } catch (_) { return; }
+  light($("#outMeter"), m.out.peak, HSEG);
+  $("#cpu").textContent = `Audio processing load: ${m.cpu}% of real time`;
+  for (const [id, v] of Object.entries(m.mics)) {
+    const el = els[id]; if (!el) continue;
+    const p = peaks[id] = Math.max(v.peak, (peaks[id] ?? -60) - 0.6);
+    light(el.querySelector(".ladder"), v.peak, LADDER, p);
+    const mic = S.mics.find(x => x.id === id);
+    el.querySelector(".magc").textContent = mic && mic.auto_gain ? `auto ${v.agc > 0 ? "+" : ""}${v.agc} dB` : "";
+  }
+}, 60);
+
+/* ---------- demo data (only used when the MicBridge server isn't reachable) ---------- */
+let D = null;
+function demoInit() {
+  const P = ["Natural", "Karaoke Classic", "KTV Echo", "Concert Hall", "Stadium", "Warm Vocal", "Bright Pop", "Speech / MC"];
+  const fx = {lowcut: 100, eq: {b100: 0, b250: -2, b800: 0, b2k5: 2, b5k: 1.5, b10k: 0}, echo_mix: .22, echo_ms: 170, echo_fb: .35, echo_damp: .35, reverb_mix: .15, reverb_room: .5, reverb_damp: .5, comp: true, comp_thr: -16, comp_ratio: 3};
+  DEV = [
+    {key: "USB Wireless Mic Receiver || Windows WASAPI", name: "USB Wireless Mic Receiver", hostapi: "Windows WASAPI", inputs: 2, outputs: 0, is_default_in: true},
+    {key: "Mic In (Sound Blaster X-Fi) || Windows WASAPI", name: "Mic In (Sound Blaster X-Fi)", hostapi: "Windows WASAPI", inputs: 1, outputs: 0},
+    {key: "SPDIF Out (Sound Blaster X-Fi) || Windows WASAPI", name: "SPDIF Out (Sound Blaster X-Fi)", hostapi: "Windows WASAPI", inputs: 0, outputs: 6, is_default_out: true},
+    {key: "Creative ASIO || ASIO", name: "Creative ASIO", hostapi: "ASIO", inputs: 2, outputs: 6}];
+  const mic = (id, name, ch, extra) => ({id, name, device: DEV[0].key, channel: ch, enabled: true, muted: false, gain_db: 6, auto_gain: false, gate: true, gate_db: -55, pan: 0, preset: "Karaoke Classic", fx: null, fx_resolved: JSON.parse(JSON.stringify(fx)), running: true, exclusive: true, error: null, ...extra});
+  D = {settings: {samplerate: 48000, blocksize: 128, input_exclusive: true, show_all_apis: false, output: {device: DEV[2].key, volume_db: 0, routing: "front+center", exclusive: false}},
+       mics: [mic("mic1", "Lead", 0), mic("mic2", "Duet", 1, {auto_gain: true, gain_db: 3})], running: true, status: "running", errors: [], output_device: DEV[2].key,
+       latency: {input_ms: 3.1, buffer_ms: 2.7, output_ms: 4.2, total_ms: 10}, last_latency_test: null, presets: P,
+       eq_bands: [["b100", 100], ["b250", 250], ["b800", 800], ["b2k5", 2500], ["b5k", 5000], ["b10k", 10000]], mode: "split"};
+}
+function demoApi(path, method, body) {
+  if (!D) demoInit();
+  const clone = () => JSON.parse(JSON.stringify(D));
+  if (path.startsWith("/api/devices")) return DEV;
+  if (path === "/api/meters") {
+    const t = performance.now() / 1000, sing = k => -24 + 14 * Math.sin(t * (2.1 + k)) * Math.sin(t * .7 + k) + (Math.random() * 6 - 3);
+    return {out: {peak: sing(0) + 4}, cpu: 7, mics: Object.fromEntries(D.mics.map((m, k) => [m.id, {peak: m.muted ? -60 : Math.min(-1, sing(k) + m.gain_db), agc: m.auto_gain ? 2.4 : 0}]))};
+  }
+  if (path === "/api/start") { D.running = true; D.status = "running"; D.mics.forEach(m => m.running = true); }
+  if (path === "/api/stop") { D.running = false; D.status = "stopped"; D.mics.forEach(m => m.running = false); }
+  if (path === "/api/settings") { const b = body || {}; if (b.output) Object.assign(D.settings.output, b.output); Object.assign(D.settings, {...b, output: D.settings.output}); }
+  if (path === "/api/mics" && method === "POST") D.mics.push({...JSON.parse(JSON.stringify(D.mics[0])), id: "mic" + (D.mics.length + 1 + Math.random()).toString(36).slice(-3), name: "", device: body.device || DEV[1].key, channel: 0});
+  const mm = path.match(/^\/api\/mics\/(.+)$/);
+  if (mm) {
+    const m = D.mics.find(x => x.id === mm[1]);
+    if (method === "DELETE") D.mics = D.mics.filter(x => x !== m);
+    else if (m) for (const [k, v] of Object.entries(body)) {
+      if (k === "fx") { m.fx = {...(m.fx || {}), ...v}; if (v.eq) Object.assign(m.fx_resolved.eq, v.eq); Object.assign(m.fx_resolved, {...v, eq: m.fx_resolved.eq}); }
+      else { m[k] = v; if (k === "preset") m.fx = null; }
+    }
+  }
+  if (path === "/api/test/record") return new Promise(r => setTimeout(() => r({ok: true, seconds: 4, peak_db: -9.4}), 4000));
+  if (path === "/api/test/latency") return new Promise(r => setTimeout(() => { D.last_latency_test = {ok: true, round_trip_ms: 41.6, software_ms: D.latency}; r(D.last_latency_test); }, 1800));
+  if (path === "/api/test/speaker") return {ok: true};
+  return clone();
+}
+
+refresh(false);
+</script>
+</body>
+</html>

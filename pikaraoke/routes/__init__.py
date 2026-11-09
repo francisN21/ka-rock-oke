@@ -6,6 +6,7 @@ here is therefore the whole of what the API list means.
 """
 
 from pikaraoke.routes.admin import admin_bp
+from pikaraoke.routes.app_api import app_api_bp
 from pikaraoke.routes.auth_api import auth_api_bp
 from pikaraoke.routes.background_music import background_music_bp
 from pikaraoke.routes.batch_song_renamer import batch_song_renamer_bp
@@ -64,4 +65,5 @@ INTERNAL_BLUEPRINTS = [
     singers_bp,
     splash_bp,
     batch_song_renamer_bp,
+    app_api_bp,
 ]
